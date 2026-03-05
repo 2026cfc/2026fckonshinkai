@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2026FC懇親会 席次検索</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: system-ui, -apple-system, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 15px;
+    }
+    .header { 
+      text-align: center; 
+      color: white; 
+      margin-bottom: 25px; 
+      text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    .search-box { 
+      width: 100%; 
+      padding: 18px 20px; 
+      font-size: 18px; 
+      border: none; 
+      border-radius: 15px; 
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+      margin-bottom: 20px;
+      background: rgba(255,255,255,0.95);
+    }
+    .instructions { 
+      background: rgba(255,255,255,0.9); 
+      padding: 15px; 
+      border-radius: 12px; 
+      margin-bottom: 20px; 
+      text-align: center;
+      font-size: 14px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+    
+    .seating-container {
+      background: rgba(255,255,255,0.15); 
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+      padding: 20px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: repeat(5, auto);
+      gap: 20px 30px;
+      max-width: 100%;
+    }
+    
+    .block {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(6, 1fr);
+      gap: 4px;
+      background: rgba(255,255,255,0.1);
+      padding: 12px;
+      border-radius: 12px;
+      position: relative;
+      min-height: 200px;
+    }
+    
+    .seat { 
+      background: rgba(255,255,255,0.92); 
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-size: 8px; 
+      font-weight: 600;
+      border-radius: 6px; 
+      transition: all 0.25s ease; 
+      cursor: pointer;
+      position: relative;
+      border: 2px solid transparent;
+      width: 52px;     
+      height: 26px;    
+      margin: 0 auto;
+    }
+    
+    .seat:hover { 
+      transform: scale(1.08); 
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    }
+    
+    .highlight { 
+      background: linear-gradient(45deg, #ffeb3b, #ff9800) !important; 
+      box-shadow: 0 0 25px rgba(255,235,59,0.9) !important;
+      transform: scale(1.15) !important;
+      animation: pulse 0.8s infinite;
+      border-color: #f57c00 !important;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 25px rgba(255,235,59,0.9); }
+      50% { box-shadow: 0 0 35px rgba(255,235,59,1); }
+    }
+    
+    .seat-name { 
+      font-size: 6px;  
+      line-height: 1; 
+      max-width: 85%;
+      text-align: center;
+      word-break: break-all;
+      margin-bottom: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .seat-id { 
+      font-size: 5.5px; 
+      opacity: 0.8;
+    }
+    
+    .loading { 
+      text-align: center; 
+      padding: 50px 15px; 
+      font-size: 16px; 
+      color: white; 
+      background: rgba(255,255,255,0.2);
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+      margin: 20px 0;
+    }
+    
+    .block-label {
+      position: absolute;
+      top: -12px;
+      left: 12px;
+      background: rgba(255,255,255,0.9);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #333;
+      z-index: 1;
+    }
+    
+    @media (max-width: 480px) { 
+      body { padding: 10px; }
+      .seat { 
+        width: 48px; 
+        height: 24px;  
+      }
+      .seat-name { font-size: 5.5px; }
+      .seat-id { font-size: 5px; }
+      .block { 
+        padding: 8px; 
+        min-height: 180px; 
+        gap: 3px;
+      }
+      .seating-container { gap: 15px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1 style="font-size: 2.2em; margin-bottom: 5px;">🏛️ 2026FC懇親会</h1>
+    <h2 style="font-size: 1.3em;">席次検索</h2>
+  </div>
+  
+  <div class="instructions">
+    📱 <strong>店舗名を入力</strong>すると該当席が<strong>黄色で点滅</strong><br>
+    横スワイプで席を確認（隙間＝通路）
+  </div>
+  
+  <input type="text" class="search-box" id="searchInput" 
+         placeholder="加盟店様は店舗名を入力（例：木更津、木更津店）、メーカー様は企業名を入力（例：クレバリーホーム、㈱クレバリーホーム）"
+         autocomplete="off">
+  
+  <div id="loading" class="loading">
+    🎯 席次表を読み込み中...
+  </div>
+  <div id="seatingContainer" class="seating-container" style="display:none;"></div>
+
+  <script>
+    const seatingData = [
+      {"seat":"A1-01","store":"仙台東店"},
+{"seat":"A1-02","store":"仙台東店"},
+{"seat":"A1-03","store":"仙台東店"},
+{"seat":"A1-04","store":"仙台南店"},
+{"seat":"A1-05","store":"仙台南店"},
+{"seat":"A1-06","store":"所沢店"},
+{"seat":"A1-07","store":"掛川店"},
+{"seat":"A1-08","store":"掛川店"},
+{"seat":"A1-09","store":"掛川店"},
+{"seat":"A1-10","store":"熊本店・熊本北店・八代店"},
+{"seat":"A1-11","store":"熊本店・熊本北店・八代店"},
+{"seat":"A1-12","store":"熊本店・熊本北店"},
+{"seat":"A2-01","store":"よしおかパーク店"},
+{"seat":"A2-02","store":"よしおかパーク店"},
+{"seat":"A2-03","store":"環状通店"},
+{"seat":"A2-04","store":"環状通店"},
+{"seat":"A2-05","store":"仙台泉店・古川店"},
+{"seat":"A2-06","store":"仙台泉店・古川店"},
+{"seat":"A2-07","store":"青森東店"},
+{"seat":"A2-08","store":"青森東店"},
+{"seat":"A2-09","store":"青森東店"},
+{"seat":"A2-10","store":"青森東店"},
+{"seat":"A2-11","store":"青森東店"},
+{"seat":"A2-12","store":"青森東店"},
+{"seat":"A3-01","store":"桑名店"},
+{"seat":"A3-02","store":"桑名店"},
+{"seat":"A3-03","store":"桑名店"},
+{"seat":"A3-04","store":"桑名店"},
+{"seat":"A3-05","store":"稲沢店"},
+{"seat":"A3-06","store":"稲沢店"},
+{"seat":"A3-07","store":"稲沢店"},
+{"seat":"A3-08","store":"稲沢店"},
+{"seat":"A3-09","store":"各務原店"},
+{"seat":"A3-10","store":"各務原店"},
+{"seat":"A3-11","store":"各務原店"},
+{"seat":"A3-12","store":"各務原店"},
+{"seat":"A4-01","store":"新庄店"},
+{"seat":"A4-02","store":"山形東店"},
+{"seat":"A4-03","store":"山形東店"},
+{"seat":"A4-04","store":"山形東店"},
+{"seat":"A4-05","store":"新庄店"},
+{"seat":"A4-06","store":"山形東店"},
+{"seat":"A4-07","store":"和泉・岸和田店"},
+{"seat":"A4-08","store":"和泉・岸和田店"},
+{"seat":"A4-09","store":"北京都店"},
+{"seat":"A4-10","store":"益田店"},
+{"seat":"A4-11","store":"広島西店"},
+{"seat":"A4-12","store":"立川店"},
+{"seat":"A5-01","store":"いわき店"},
+{"seat":"A5-02","store":"いわき店"},
+{"seat":"A5-03","store":"立川店"},
+{"seat":"A5-04","store":"立川店"},
+{"seat":"A5-05","store":"立川店"},
+{"seat":"A5-06","store":"立川店"},
+{"seat":"A5-07","store":"千葉中央店"},
+{"seat":"A5-08","store":"千葉中央店"},
+{"seat":"A5-09","store":"千葉中央店"},
+{"seat":"A5-10","store":"千葉中央店"},
+{"seat":"A5-11","store":"千葉中央店"},
+{"seat":"A5-12","store":"千葉中央店"},
+{"seat":"A6-01","store":"三次店"},
+{"seat":"A6-02","store":"名古屋東店"},
+{"seat":"A6-03","store":"名古屋東店"},
+{"seat":"A6-04","store":"秦野店"},
+{"seat":"A6-05","store":"秦野店"},
+{"seat":"A6-06","store":"上越店"},
+{"seat":"A6-07","store":"新潟西店・南店"},
+{"seat":"A6-08","store":"新潟西店・南店"},
+{"seat":"A6-09","store":"長岡店"},
+{"seat":"A6-10","store":"長岡店"},
+{"seat":"A6-11","store":"飯田店"},
+{"seat":"A6-12","store":"飯田店"},
+{"seat":"A7-01","store":"諏訪店・伊那店"},
+{"seat":"A7-02","store":"諏訪店・伊那店"},
+{"seat":"A7-03","store":"水戸店・ひたちなか店"},
+{"seat":"A7-04","store":"水戸店・ひたちなか店"},
+{"seat":"A7-05","store":"水戸店・ひたちなか店"},
+{"seat":"A7-06","store":"水戸店・ひたちなか店"},
+{"seat":"A7-07","store":"A7-7"},
+{"seat":"A7-08","store":"A7-8"},
+{"seat":"A7-09","store":"A7-9"},
+{"seat":"A7-10","store":"A7-10"},
+{"seat":"A7-11","store":"A7-11"},
+{"seat":"A7-12","store":"A7-12"},
+{"seat":"B1-01","store":"所沢店"},
+{"seat":"B1-02","store":"所沢店"},
+{"seat":"B1-03","store":"高松店"},
+{"seat":"B1-04","store":"高松店"},
+{"seat":"B1-05","store":"鳥取中央店"},
+{"seat":"B1-06","store":"米子店"},
+{"seat":"B1-07","store":"八代店"},
+{"seat":"B1-08","store":"熊本北店"},
+{"seat":"B1-09","store":"本社"},
+{"seat":"B1-10","store":"本社"},
+{"seat":"B1-11","store":"本社"},
+{"seat":"B1-12","store":"高崎店"},
+{"seat":"B2-01","store":"仙台泉店・古川店"},
+{"seat":"B2-02","store":"仙台泉店・古川店"},
+{"seat":"B2-03","store":"仙台泉店・古川店"},
+{"seat":"B2-04","store":"仙台泉店・古川店"},
+{"seat":"B2-05","store":"仙台泉店・古川店"},
+{"seat":"B2-06","store":"仙台泉店・古川店"},
+{"seat":"B2-07","store":"青森東店"},
+{"seat":"B2-08","store":"青森東店"},
+{"seat":"B2-09","store":"青森東店"},
+{"seat":"B2-10","store":"南予店"},
+{"seat":"B2-11","store":"草津店"},
+{"seat":"B2-12","store":"草津店"},
+{"seat":"B3-01","store":"稲沢店"},
+{"seat":"B3-02","store":"稲沢店"},
+{"seat":"B3-03","store":"稲沢店"},
+{"seat":"B3-04","store":"稲沢店"},
+{"seat":"B3-05","store":"稲沢店"},
+{"seat":"B3-06","store":"稲沢店"},
+{"seat":"B3-07","store":"豊川店"},
+{"seat":"B3-08","store":"豊川店"},
+{"seat":"B3-09","store":"豊川店"},
+{"seat":"B3-10","store":"豊川店"},
+{"seat":"B3-11","store":"豊川店"},
+{"seat":"B3-12","store":"四日市店"},
+{"seat":"B4-01","store":"モラージュ菖蒲店"},
+{"seat":"B4-02","store":"モラージュ菖蒲店"},
+{"seat":"B4-03","store":"モラージュ菖蒲店"},
+{"seat":"B4-04","store":"白河店"},
+{"seat":"B4-05","store":"白河店"},
+{"seat":"B4-06","store":"白河店"},
+{"seat":"B4-07","store":"立川店"},
+{"seat":"B4-08","store":"立川店"},
+{"seat":"B4-09","store":"立川店"},
+{"seat":"B4-10","store":"白河店"},
+{"seat":"B4-11","store":"静岡店"},
+{"seat":"B4-12","store":"静岡店"},
+{"seat":"B5-01","store":"立川店"},
+{"seat":"B5-02","store":"立川店"},
+{"seat":"B5-03","store":"立川店"},
+{"seat":"B5-04","store":"飯塚店"},
+{"seat":"B5-05","store":"飯塚店"},
+{"seat":"B5-06","store":"飯塚店"},
+{"seat":"B5-07","store":"千葉中央店"},
+{"seat":"B5-08","store":"新座・朝霞店"},
+{"seat":"B5-09","store":"新座・朝霞店"},
+{"seat":"B5-10","store":"新座・朝霞店"},
+{"seat":"B5-11","store":"新座・朝霞店"},
+{"seat":"B5-12","store":"新座・朝霞店"},
+{"seat":"B6-01","store":"上越店"},
+{"seat":"B6-02","store":"新潟東店"},
+{"seat":"B6-03","store":"新潟東店"},
+{"seat":"B6-04","store":"大牟田店"},
+{"seat":"B6-05","store":"大牟田店"},
+{"seat":"B6-06","store":"大牟田店"},
+{"seat":"B6-07","store":"飯田店"},
+{"seat":"B6-08","store":"飯田店"},
+{"seat":"B6-09","store":"飯田店"},
+{"seat":"B6-10","store":"飯田店"},
+{"seat":"B6-11","store":"飯田店"},
+{"seat":"B6-12","store":"飯田店"},
+{"seat":"B7-01","store":"ＦＣ本部"},
+{"seat":"B7-02","store":"ＦＣ本部"},
+{"seat":"B7-03","store":"ＦＣ本部"},
+{"seat":"B7-04","store":"ＦＣ本部"},
+{"seat":"B7-05","store":"ＦＣ本部"},
+{"seat":"B7-06","store":"ＦＣ本部"},
+{"seat":"B7-07","store":"B7-7"},
+{"seat":"B7-08","store":"B7-8"},
+{"seat":"B7-09","store":"B7-9"},
+{"seat":"B7-10","store":"B7-10"},
+{"seat":"B7-11","store":"B7-11"},
+{"seat":"B7-12","store":"B7-12"},
+{"seat":"C1-01","store":"大村店"},
+{"seat":"C1-02","store":"大村店"},
+{"seat":"C1-03","store":"浜松東店"},
+{"seat":"C1-04","store":"浜松東店"},
+{"seat":"C1-05","store":"城東店"},
+{"seat":"C1-06","store":"新宿店"},
+{"seat":"C1-07","store":"高崎店"},
+{"seat":"C1-08","store":"伊勢崎店"},
+{"seat":"C1-09","store":"伊勢崎店"},
+{"seat":"C1-10","store":"城東店"},
+{"seat":"C1-11","store":"城東店：新宿店"},
+{"seat":"C1-12","store":"城東店"},
+{"seat":"C2-01","store":"仙台泉店・古川店"},
+{"seat":"C2-02","store":"仙台泉店・古川店"},
+{"seat":"C2-03","store":"仙台泉店・古川店"},
+{"seat":"C2-04","store":"仙台泉店・古川店"},
+{"seat":"C2-05","store":"松本店"},
+{"seat":"C2-06","store":"松本店"},
+{"seat":"C2-07","store":"草津店"},
+{"seat":"C2-08","store":"草津店"},
+{"seat":"C2-09","store":"草津店"},
+{"seat":"C2-10","store":"草津店"},
+{"seat":"C2-11","store":"大垣店"},
+{"seat":"C2-12","store":"松本店"},
+{"seat":"C3-01","store":"稲沢店"},
+{"seat":"C3-02","store":"稲沢店"},
+{"seat":"C3-03","store":"大垣店"},
+{"seat":"C3-04","store":"大垣店"},
+{"seat":"C3-05","store":"大垣店"},
+{"seat":"C3-06","store":"大垣店"},
+{"seat":"C3-07","store":"四日市店"},
+{"seat":"C3-08","store":"四日市店"},
+{"seat":"C3-09","store":"四日市店"},
+{"seat":"C3-10","store":"四日市店"},
+{"seat":"C3-11","store":"四日市店"},
+{"seat":"C3-12","store":"木更津店"},
+{"seat":"C4-01","store":"白河店"},
+{"seat":"C4-02","store":"木更津店"},
+{"seat":"C4-03","store":"木更津店"},
+{"seat":"C4-04","store":"木更津店"},
+{"seat":"C4-05","store":"木更津店"},
+{"seat":"C4-06","store":"木更津店"},
+{"seat":"C4-07","store":"静岡店"},
+{"seat":"C4-08","store":"静岡店"},
+{"seat":"C4-09","store":"静岡店"},
+{"seat":"C4-10","store":"静岡店"},
+{"seat":"C4-11","store":"静岡店"},
+{"seat":"C4-12","store":"静岡店"},
+{"seat":"C5-01","store":"高知店"},
+{"seat":"C5-02","store":"高知店"},
+{"seat":"C5-03","store":"高知店"},
+{"seat":"C5-04","store":"高知店"},
+{"seat":"C5-05","store":"静岡店"},
+{"seat":"C5-06","store":"静岡店"},
+{"seat":"C5-07","store":"出雲店"},
+{"seat":"C5-08","store":"出雲店"},
+{"seat":"C5-09","store":"出雲店"},
+{"seat":"C5-10","store":"松江店"},
+{"seat":"C5-11","store":"松江店"},
+{"seat":"C5-12","store":"松江店"},
+{"seat":"C6-01","store":"新潟西・南店"},
+{"seat":"C6-02","store":"長岡店"},
+{"seat":"C6-03","store":"松江店"},
+{"seat":"C6-04","store":"松江店"},
+{"seat":"C6-05","store":"松江店"},
+{"seat":"C6-06","store":"松江店"},
+{"seat":"C6-07","store":"飯田店"},
+{"seat":"C6-08","store":"諏訪店・伊那店"},
+{"seat":"C6-09","store":"諏訪店・伊那店"},
+{"seat":"C6-10","store":"諏訪店・伊那店"},
+{"seat":"C6-11","store":"諏訪店・伊那店"},
+{"seat":"C6-12","store":"諏訪店・伊那店"},
+{"seat":"C7-01","store":"ＦＣ本部"},
+{"seat":"C7-02","store":"ＦＣ本部"},
+{"seat":"C7-03","store":"ＦＣ本部"},
+{"seat":"C7-04","store":"ＦＣ本部"},
+{"seat":"C7-05","store":"ＦＣ本部"},
+{"seat":"C7-06","store":"ＦＣ本部"},
+{"seat":"C7-07","store":"C7-7"},
+{"seat":"C7-08","store":"C7-8"},
+{"seat":"C7-09","store":"C7-9"},
+{"seat":"C7-10","store":"C7-10"},
+{"seat":"C7-11","store":"C7-11"},
+{"seat":"C7-12","store":"C7-12"},
+{"seat":"D1-01","store":"㈱アイコットリョーワ"},
+{"seat":"D1-02","store":"アイホン㈱"},
+{"seat":"D1-03","store":"旭化成建材㈱"},
+{"seat":"D1-04","store":"アーテック㈱"},
+{"seat":"D1-05","store":"新井窯業㈱"},
+{"seat":"D1-06","store":"㈱アルボレックス"},
+{"seat":"D1-07","store":"㈱イクタ"},
+{"seat":"D1-08","store":"石巻合板工業㈱"},
+{"seat":"D1-09","store":"㈱イノアック住環境"},
+{"seat":"D1-10","store":"院庄林業㈱"},
+{"seat":"D1-11","store":"AIG損害保険㈱"},
+{"seat":"D1-12","store":"AIG損害保険㈱"},
+{"seat":"D2-01","store":"㈱オリエント"},
+{"seat":"D2-02","store":"㈱オリエント"},
+{"seat":"D2-03","store":"㈱オリエント"},
+{"seat":"D2-04","store":"㈱カネカ"},
+{"seat":"D2-05","store":"㈱カナイ"},
+{"seat":"D2-06","store":"㈱カナイ"},
+{"seat":"D2-07","store":"㈱グリーンフィールド"},
+{"seat":"D2-08","store":"ケイミュー㈱"},
+{"seat":"D2-09","store":"ケイミュー㈱"},
+{"seat":"D2-10","store":"神島化学工業㈱"},
+{"seat":"D2-11","store":"㈱CoLife"},
+{"seat":"D2-12","store":"㈱CoLife"},
+{"seat":"D3-01","store":"三州野安㈱"},
+{"seat":"D3-02","store":"三州野安㈱"},
+{"seat":"D3-03","store":"㈱篠原商店"},
+{"seat":"D3-04","store":"㈱篠原商店"},
+{"seat":"D3-05","store":"新東㈱"},
+{"seat":"D3-06","store":"新東㈱"},
+{"seat":"D3-07","store":"JFEロックファイバー㈱"},
+{"seat":"D3-08","store":"㈱JFDエンジニアリング"},
+{"seat":"D3-09","store":"㈱JFDエンジニアリング"},
+{"seat":"D3-10","store":"㈱住宅構造研究所"},
+{"seat":"D3-11","store":"城東テクノ㈱"},
+{"seat":"D3-12","store":"シエンプレ"},
+{"seat":"D4-01","store":"㈱スペースリー"},
+{"seat":"D4-02","store":"㈱スペースリー"},
+{"seat":"D4-03","store":"積水フーラー㈱"},
+{"seat":"D4-04","store":"積水フーラー㈱"},
+{"seat":"D4-05","store":"セメダイン㈱"},
+{"seat":"D4-06","store":"セメダイン㈱"},
+{"seat":"D4-07","store":" ダイヤゼブラ電機株"},
+{"seat":"D4-08","store":"㈱タカギ"},
+{"seat":"D4-09","store":"㈱タカギ"},
+{"seat":"D4-10","store":"㈱タカショー"},
+{"seat":"D4-11","store":"㈱タカショー"},
+{"seat":"D4-12","store":"タカラスタンダード㈱"},
+{"seat":"D5-01","store":"㈱電通東日本"},
+{"seat":"D5-02","store":"㈱電通東日本"},
+{"seat":"D5-03","store":"トクラス㈱"},
+{"seat":"D5-04","store":"トクラス㈱"},
+{"seat":"D5-05","store":"㈱トーコー"},
+{"seat":"D5-06","store":"TOTO㈱"},
+{"seat":"D5-07","store":"日本制震システム㈱"},
+{"seat":"D5-08","store":"日本制震システム㈱"},
+{"seat":"D5-09","store":"日本制震システム㈱"},
+{"seat":"D5-10","store":"日本ノボパン工業㈱"},
+{"seat":"D5-11","store":"日本ノボパン工業㈱"},
+{"seat":"D5-12","store":"野原グループ㈱"},
+{"seat":"D6-01","store":"㈱平田タイル"},
+{"seat":"D6-02","store":"㈱富士計器"},
+{"seat":"D6-03","store":"㈱富士計器"},
+{"seat":"D6-04","store":"㈱富士通ゼネラル"},
+{"seat":"D6-05","store":"物林㈱"},
+{"seat":"D6-06","store":"文化シャッター㈱"},
+{"seat":"D6-07","store":"丸玉木材㈱"},
+{"seat":"D6-08","store":"マックス㈱"},
+{"seat":"D6-09","store":"マックス㈱"},
+{"seat":"D6-10","store":"㈱マルサン"},
+{"seat":"D6-11","store":"㈱マルサン"},
+{"seat":"D6-12","store":"メークス㈱"},
+{"seat":"D7-01","store":"ＦＣ本部"},
+{"seat":"D7-02","store":"ＦＣ本部"},
+{"seat":"D7-03","store":"ＦＣ本部"},
+{"seat":"D7-04","store":"ＦＣ本部"},
+{"seat":"D7-05","store":"ＦＣ本部"},
+{"seat":"D7-06","store":"リリカラ㈱"},
+{"seat":"D7-07","store":"D7-7"},
+{"seat":"D7-08","store":"D7-8"},
+{"seat":"D7-09","store":"D7-9"},
+{"seat":"D7-10","store":"D7-10"},
+{"seat":"D7-11","store":"D7-11"},
+{"seat":"D7-12","store":"D7-12"},
+{"seat":"E1-01","store":"㈱アルボレックス"},
+{"seat":"E1-02","store":"㈱アンドパッド"},
+{"seat":"E1-03","store":"㈱アンドパッド"},
+{"seat":"E1-04","store":"㈱アンドパッド"},
+{"seat":"E1-05","store":"㈱イオグランツ"},
+{"seat":"E1-06","store":"㈱イオグランツ"},
+{"seat":"E1-07","store":"SMB建材㈱"},
+{"seat":"E1-08","store":"SMB建材㈱"},
+{"seat":"E1-09","store":"エース工業㈱"},
+{"seat":"E1-10","store":"江間忠ウッドベース鹿島㈱"},
+{"seat":"E1-11","store":"江間忠ウッドベース姫路㈱"},
+{"seat":"E1-12","store":"㈱イオグランツ"},
+{"seat":"E2-01","store":"㈱木村"},
+{"seat":"E2-02","store":"㈱九州テクノ工販"},
+{"seat":"E2-03","store":"㈱クボタケミックス"},
+{"seat":"E2-04","store":"㈱クボタケミックス"},
+{"seat":"E2-05","store":"クリナップ㈱"},
+{"seat":"E2-06","store":"クリナップ㈱"},
+{"seat":"E2-07","store":"㈱駒　匠"},
+{"seat":"E2-08","store":"㈱小松物産"},
+{"seat":"E2-09","store":"㈱コロナ"},
+{"seat":"E2-10","store":"佐藤木材工業㈱"},
+{"seat":"E2-11","store":"三協立山㈱三協アルミ社"},
+{"seat":"E2-12","store":"㈱サンゲツ"},
+{"seat":"E3-01","store":"㈱シンホリ"},
+{"seat":"E3-02","store":"㈱シンホリ"},
+{"seat":"E3-03","store":"㈱ＪＳＰ"},
+{"seat":"E3-04","store":"㈱ＪＳＰ"},
+{"seat":"E3-05","store":"秀朋㈱"},
+{"seat":"E3-06","store":"㈱サンゲツ"},
+{"seat":"E3-07","store":"㈱ストローグ"},
+{"seat":"E3-08","store":"㈱ストローグ"},
+{"seat":"E3-09","store":"㈱Speee"},
+{"seat":"E3-10","store":"㈱Speee"},
+{"seat":"E3-11","store":"㈱Speee"},
+{"seat":"E3-12","store":"㈱Speee"},
+{"seat":"E4-01","store":"双日建材㈱"},
+{"seat":"E4-02","store":"㈱ソレックス"},
+{"seat":"E4-03","store":"㈱ソレックス"},
+{"seat":"E4-04","store":"大光電機株"},
+{"seat":"E4-05","store":"ダイキン工業㈱"},
+{"seat":"E4-06","store":"㈱大三商行"},
+{"seat":"E4-07","store":"中央化成品㈱"},
+{"seat":"E4-08","store":"長州産業㈱"},
+{"seat":"E4-09","store":"チヨダウーテ㈱"},
+{"seat":"E4-10","store":"津田産業㈱"},
+{"seat":"E4-11","store":"㈱鶴弥"},
+{"seat":"E4-12","store":"㈱鶴弥"},
+{"seat":"E5-01","store":"ニチハ㈱"},
+{"seat":"E5-02","store":"ニチハ㈱"},
+{"seat":"E5-03","store":"㈱日本アクア"},
+{"seat":"E5-04","store":"㈱日本経済広告社"},
+{"seat":"E5-05","store":"㈱日本経済広告社"},
+{"seat":"E5-06","store":"日本住環境㈱"},
+{"seat":"E5-07","store":"ハンファジャパン㈱"},
+{"seat":"E5-08","store":"パナソニック㈱エレクトリックワークス社"},
+{"seat":"E5-09","store":"パナソニック㈱エレクトリックワークス社"},
+{"seat":"E5-10","store":"パナソニック電材ソリューションズ㈱"},
+{"seat":"E5-11","store":"パナソニック電材ソリューションズ㈱"},
+{"seat":"E5-12","store":"日本住環境㈱"},
+{"seat":"E6-01","store":"文化シャッター㈱"},
+{"seat":"E6-02","store":"文化シャッター㈱"},
+{"seat":"E6-03","store":"㈱紅中"},
+{"seat":"E6-04","store":"㈱紅中"},
+{"seat":"E6-05","store":"パナソニックハウジングソリューションズ㈱"},
+{"seat":"E6-06","store":"菱秋木材㈱"},
+{"seat":"E6-07","store":"㈱山善"},
+{"seat":"E6-08","store":"山中産業㈱"},
+{"seat":"E6-09","store":"㈱勇輝美装"},
+{"seat":"E6-10","store":"吉野石膏㈱"},
+{"seat":"E6-11","store":"㈱ＬＩＸＩＬトータルサービス"},
+{"seat":"E6-12","store":"㈱LIXILトータル販売"},
+{"seat":"E7-01","store":"YKK AP㈱"},
+{"seat":"E7-02","store":"YKK AP㈱"},
+{"seat":"E7-03","store":"㈲YSKサポート"},
+{"seat":"E7-04","store":"渡辺パイプ㈱"},
+{"seat":"E7-05","store":"㈱LIXIL"},
+{"seat":"E7-06","store":"㈱LIXIL"},
+{"seat":"E7-07","store":"E7-7"},
+{"seat":"E7-08","store":"E7-8"},
+{"seat":"E7-09","store":"E7-9"},
+{"seat":"E7-10","store":"E7-10"},
+{"seat":"E7-11","store":"E7-11"},
+{"seat":"E7-12","store":"E7-12"},
+
+    ];
+    
+    window.onload = function() {
+      displaySeating();
+    };
+    
+    document.getElementById('searchInput').addEventListener('input', function() {
+      const query = this.value.toLowerCase().trim();
+      document.querySelectorAll('.seat').forEach(seat => {
+        seat.classList.remove('highlight');
+        if (query && seat.dataset.store && 
+            seat.dataset.store.toLowerCase().includes(query)) {
+          seat.classList.add('highlight');
+          seat.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'nearest'
+          });
+        }
+      });
+    });
+    
+    function displaySeating() {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('seatingContainer').style.display = 'grid';
+      
+      const container = document.getElementById('seatingContainer');
+      
+      for(let blockRow = 0; blockRow < 5; blockRow++) {
+        for(let blockCol = 0; blockCol < 7; blockCol++) {
+          const block = document.createElement('div');
+          block.className = 'block';
+          
+          const rowLetter = String.fromCharCode(65 + blockRow);
+          const colNumber = blockCol + 1;
+          const blockName = `${rowLetter}${colNumber}`;
+          
+          const label = document.createElement('div');
+          label.className = 'block-label';
+          label.textContent = blockName;
+          block.appendChild(label);
+          
+          // ✅ 新しい配置ルール：縦方向1-6, 右列7-12
+          // A1-1の下→A1-2, A1-1の右→A1-7
+          for(let gridRow = 0; gridRow < 6; gridRow++) {
+            for(let gridCol = 0; gridCol < 2; gridCol++) {
+              // 左列（0）：1-6番、右列（1）：7-12番
+              let seatNum;
+              if (gridCol === 0) {
+                seatNum = gridRow + 1;  // 左列：1,2,3,4,5,6
+              } else {
+                seatNum = gridRow + 7;  // 右列：7,8,9,10,11,12
+              }
+              
+              const newSeatId = `${blockName}-${seatNum.toString().padStart(2, '0')}`;
+              
+              // 元データとのマッピング（A1ブロックの例）
+              // A1-1→A-01, A1-2→A-03, A1-7→A-02, A1-8→A-04...
+              let originalSeatNum;
+              if (seatNum <= 6) {
+                originalSeatNum = (seatNum - 1) * 2 + 1; // 奇数：01,03,05...
+              } else {
+                originalSeatNum = (seatNum - 7) * 2 + 2; // 偶数：02,04,06...
+              }
+              
+              const seatData = seatingData.find(s => s.seat === newSeatId); // シンプル！
+              
+              const seat = document.createElement('div');
+              seat.className = 'seat';
+              
+              if (seatData) {
+                seat.innerHTML = `
+                  <div class="seat-name">${seatData.store}</div>
+                  <div class="seat-id">${newSeatId}</div>
+                `;
+                seat.dataset.store = seatData.store;
+                seat.onclick = () => {
+                  navigator.vibrate?.(100);
+                  alert(`${seatData.store}\n席番号：${newSeatId}`);
+                };
+              } else {
+                seat.innerHTML = `<div class="seat-id">${newSeatId}</div>`;
+                seat.dataset.store = '';
+                seat.style.opacity = '0.4';
+                seat.onclick = () => alert(`席番号：${newSeatId}\n（空席）`);
+              }
+              seat.dataset.seatId = newSeatId;
+              block.appendChild(seat);
+            }
+          }
+          container.appendChild(block);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
